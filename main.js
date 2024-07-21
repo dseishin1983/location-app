@@ -11,6 +11,10 @@ import 'maplibre-gl-opacity/dist/maplibre-gl-opacity.css';
 // 地点間の距離を計算するモジュール
 import distance from '@turf/distance';
 
+const point1 = [140, 40]
+const point2 = [138, 38]
+const dist = distance(point1, point2);
+
 const map = new maplibregl.Map({
     container: 'map', // div要素のid
     zoom: 5, // 初期表示のズーム
@@ -568,10 +572,5 @@ map.on('load', () => {
                 ],
             },
         };
-        // style.sources.routeのGeoJSONデータを更新する
-        map.getSource('route').setData({
-            type: 'FeatureCollection',
-            features: [routeFeature],
         });
     });
- })
