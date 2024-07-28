@@ -13,7 +13,9 @@
   },
   "dependencies": {
     "@turf/distance": "^7.0.0",
-    "maplibre-gl": "^2.4.0"
+    "deckgl-gsi-terrain-layer": "^1.1.0",
+    "maplibre-gl": "^2.4.0",
+    "maplibre-gl-gsi-terrain": "^1.2.0"
   },
   "main": "main.js",
   "author": "",

@@ -14,6 +14,10 @@ import distance from '@turf/distance';
 const point1 = [140, 40]
 const point2 = [138, 38]
 const dist = distance(point1, point2);
+// 281.6331971379335[km]
+
+// 地理院標高タイルをMapLibre GL JSで利用するためのモジュール
+import { useGsiTerrainSource } from 'maplibre-gl-gsi-terrain';
 
 const map = new maplibregl.Map({
     container: 'map', // div要素のid
@@ -116,7 +120,8 @@ const map = new maplibregl.Map({
                 attribution:
                     '<a href="https://www.gsi.go.jp/bousaichiri/hinanbasho.html" target="_blank">国土地理院:指定緊急避難場所データ</a>',
             },
-            route: {
+            //sources
+                route: {
                 // 現在位置と最寄りの避難施設をつなぐライン
                 type: 'geojson',
                 data: {
@@ -392,7 +397,7 @@ const getNearestFeature = (longitude, latitude) => {
     const currentSkhbLayerFilter = getCurrentSkhbLayerFilter();
     const features = map.querySourceFeatures('skhb', {
         sourceLayer: 'skhb',
-        filter: currentSkhbLayerFilter,
+        filter: currentSkhbLayerFilter,//表示中のレイヤーのfilter条件に合致するものもにを抽出
     });
 
     // 現在地に最も近い地物を見つける
@@ -402,6 +407,7 @@ const getNearestFeature = (longitude, latitude) => {
             feature.geometry.coordinates,
         );
         if (minDistFeature === null || minDistFeature.properties.dist > dist)
+            // １つ目の地物、もしくは、現在の地物が最寄りの場合は、最寄り地物データを更新
             return {
                 ...feature,
                 properties: {
@@ -409,7 +415,8 @@ const getNearestFeature = (longitude, latitude) => {
                     dist,
                 },
             };
-        return minDistFeature;
+
+        return minDistFeature;　// 最寄り地物を更新しない場合
     }, null);
 
     return nearestFeature;
@@ -555,7 +562,7 @@ map.on('load', () => {
             });
             return;
         }
-
+    
         // 現在地の最寄りの地物を取得
         const nearestFeature = getNearestFeature(
             userLocation[0],
@@ -572,5 +579,45 @@ map.on('load', () => {
                 ],
             },
         };
+        // style.sources.routeのGeoJSONデータを更新する
+        map.getSource('route').setData({
+            type: 'FeatureCollection',
+            features: [routeFeature],
         });
     });
+
+    // 地形データ生成（産総研シームレス標高タイル）
+    const gsiTerrainSource = useGsiTerrainSource(maplibregl.addProtocol, {
+        tileUrl: 'https://tiles.gsj.jp/tiles/elev/mixed/{z}/{y}/{x}.png',
+        maxzoom: 17,
+        attribution: '<a href="https://gbank.gsj.jp/seamless/elev/">産総研シームレス標高タイル</a>'
+    });
+
+    // 地形データ追加（type=raster-dem）
+    map.addSource('terrain',{
+        type: 'raster-dem',
+        tiles:['https://api.maptiler.com/tiles/terrain-rgb-v2/{z}/{x}/{y}.webp?key=OSOtOqen1T2Z8b3KYmJZ'],
+        maxzoom: 12
+    });
+    // 'gsiTerrainSource'は'type="raster-dem"'のsourceが定義されたオブジェクトです。
+    // 陰影図追加
+    map.addLayer(
+        {
+            id: 'hillshade',
+            source: 'terrain', // type=raster-demのsourceを指定
+            type: 'hillshade', // 陰影図レイヤー
+            paint: {
+                'hillshade-illumination-anchor': 'map', // 陰影の方向の基準
+                'hillshade-exaggeration': 0.2, // 陰影の強さ
+            },
+        },
+        'hazard_jisuberi-layer', // どのレイヤーの手前に追加するかIDで指定
+    );
+});
+    // 3D地形
+    map.addControl(
+        new maplibregl.TerrainControl({
+            source: 'terrain', // type="raster-dem"のsourceのID
+            exaggeration: 1, // 標高を強調する倍率
+        }),
+    );
